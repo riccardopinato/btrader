@@ -39,6 +39,11 @@ RUN cat /tmp/source.part00 /tmp/source.part01 /tmp/source.part02 /tmp/source.par
 WORKDIR /work/EasyDebloat_v0.1.0
 
 RUN sed -i 's/compileSdk = 37/compileSdk = 36/' app/build.gradle.kts
+RUN sed -i 's/androidx.core:core:1.19.0/androidx.core:core:1.17.0/' app/build.gradle.kts \
+    && sed -i 's/androidx.activity:activity-compose:1.13.0/androidx.activity:activity-compose:1.12.4/' app/build.gradle.kts \
+    && sed -i 's/androidx.lifecycle:lifecycle-runtime-ktx:2.11.0/androidx.lifecycle:lifecycle-runtime-ktx:2.10.0/' app/build.gradle.kts \
+    && sed -i 's/androidx.lifecycle:lifecycle-viewmodel-compose:2.11.0/androidx.lifecycle:lifecycle-viewmodel-compose:2.10.0/' app/build.gradle.kts \
+    && sed -i 's/androidx.lifecycle:lifecycle-viewmodel-ktx:2.11.0/androidx.lifecycle:lifecycle-viewmodel-ktx:2.10.0/' app/build.gradle.kts
 RUN gradle --version
 RUN gradle testDebugUnitTest assembleDebug --stacktrace
 
