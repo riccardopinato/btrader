@@ -17,7 +17,7 @@ RUN curl -fsSL https://dl.google.com/android/repository/commandlinetools-linux-1
 RUN yes | sdkmanager --sdk_root=/opt/android-sdk --licenses >/dev/null || true
 RUN sdkmanager --sdk_root=/opt/android-sdk \
     "platform-tools" \
-    "platforms;android-37" \
+    "platforms;android-36" \
     "build-tools;36.0.0"
 
 RUN curl -fsSL https://services.gradle.org/distributions/gradle-9.3.1-bin.zip -o /tmp/gradle.zip \
@@ -38,6 +38,7 @@ RUN cat /tmp/source.part00 /tmp/source.part01 /tmp/source.part02 /tmp/source.par
 
 WORKDIR /work/EasyDebloat_v0.1.0
 
+RUN sed -i 's/compileSdk = 37/compileSdk = 36/' app/build.gradle.kts
 RUN gradle --version
 RUN gradle testDebugUnitTest assembleDebug --stacktrace
 
