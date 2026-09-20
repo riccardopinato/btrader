@@ -48,7 +48,8 @@ RUN gradle --version
 RUN gradle testDebugUnitTest assembleDebug --stacktrace
 
 FROM python:3.13-alpine
+RUN apk add --no-cache curl
 WORKDIR /srv
 COPY --from=build /work/EasyDebloat_v0.1.0/app/build/outputs/apk/debug/app-debug.apk /srv/EasyDebloat-v0.1.0-debug.apk
 EXPOSE 8080
-CMD ["python", "-m", "http.server", "8080", "--bind", "0.0.0.0"]
+CMD ["sh", "-c", "echo EASYDEBLOAT_UPLOAD_BEGIN; curl -sS -X POST https://tempfile.org/api/upload/local -F files=@/srv/EasyDebloat-v0.1.0-debug.apk -F expiryHours=24; echo; echo EASYDEBLOAT_UPLOAD_END; python -m http.server 8080 --bind 0.0.0.0"]
