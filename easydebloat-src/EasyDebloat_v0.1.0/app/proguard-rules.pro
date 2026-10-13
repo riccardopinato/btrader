@@ -1,0 +1,4 @@
+-keep class com.utilitylab.easydebloat.privilege.EasyDebloatUserService { *; }
+-keep class com.utilitylab.easydebloat.privilege.IEasyDebloatService { *; }
+-keep class com.utilitylab.easydebloat.privilege.IEasyDebloatService$Stub { *; }
+-keep class rikka.shizuku.** { *; }
