@@ -47,7 +47,7 @@ jobs:
           rm -rf /tmp/cmdline /tmp/cmdline.zip
 
           yes | sdkmanager --sdk_root="$ANDROID_SDK_ROOT" --licenses >/dev/null || true
-          sdkmanager --sdk_root="$ANDROID_SDK_ROOT"             "platform-tools"             "platforms;android-37"             "build-tools;36.0.0"
+          android --sdk="$ANDROID_SDK_ROOT" sdk install --canary             platform-tools             platforms/android-37
 
       - name: Install Gradle 9.3.1
         shell: bash
