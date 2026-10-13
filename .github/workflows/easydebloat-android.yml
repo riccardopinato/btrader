@@ -24,30 +24,37 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Install JDK 17 and Android SDK packages
+      - name: Install JDK 17 and Android 17 preview SDK
         shell: bash
         run: |
           set -euo pipefail
           sudo apt-get update
           sudo apt-get install -y openjdk-17-jdk-headless
           export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
-          export ANDROID_SDK_ROOT=/opt/android-sdk
-          export PATH="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$JAVA_HOME/bin:$PATH"
+          export ANDROID_HOME="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          unset ANDROID_SDK_ROOT
           echo "JAVA_HOME=$JAVA_HOME" >> "$GITHUB_ENV"
-          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_HOME=$ANDROID_HOME" >> "$GITHUB_ENV"
           echo "$JAVA_HOME/bin" >> "$GITHUB_PATH"
-          echo "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
-          echo "$ANDROID_SDK_ROOT/platform-tools" >> "$GITHUB_PATH"
 
-          sudo mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools"
-          sudo chown -R "$USER:$USER" "$ANDROID_SDK_ROOT"
+          rm -rf /tmp/android-cli
+          mkdir -p /tmp/android-cli
           curl -fsSL https://dl.google.com/android/repository/commandlinetools-linux-15859902_latest.zip -o /tmp/cmdline.zip
-          unzip -q /tmp/cmdline.zip -d /tmp/cmdline
-          mv /tmp/cmdline/cmdline-tools "$ANDROID_SDK_ROOT/cmdline-tools/latest"
-          rm -rf /tmp/cmdline /tmp/cmdline.zip
+          unzip -q /tmp/cmdline.zip -d /tmp/android-cli
+          rm -f /tmp/cmdline.zip
+          export PATH="/tmp/android-cli/cmdline-tools/bin:$PATH"
 
-          yes | sdkmanager --sdk_root="$ANDROID_SDK_ROOT" --licenses >/dev/null || true
-          android --sdk="$ANDROID_SDK_ROOT" sdk install --canary             platform-tools             platforms/android-37
+          android --sdk="$ANDROID_HOME" sdk list --all --all-versions --canary "platforms/*" | tee /tmp/platforms.txt
+          android --sdk="$ANDROID_HOME" sdk list --all --all-versions --canary "build-tools/*" | tee /tmp/build-tools.txt
+
+          platform_pkg="$(grep -Eo 'platforms/[A-Za-z0-9._-]+' /tmp/platforms.txt | grep -Ei '(android-37|cinnamon)' | head -n1 || true)"
+          build_tools_pkg="$(grep -Eo 'build-tools/[A-Za-z0-9._-]+' /tmp/build-tools.txt | grep -E '^build-tools/37' | head -n1 || true)"
+
+          test -n "$platform_pkg" || { echo "Android 17 preview platform package not found"; exit 1; }
+          test -n "$build_tools_pkg" || { echo "Android 17 build-tools package not found"; exit 1; }
+
+          echo "Installing $platform_pkg and $build_tools_pkg"
+          android --sdk="$ANDROID_HOME" sdk install --canary             platform-tools             "$platform_pkg"             "$build_tools_pkg"
 
       - name: Install Gradle 9.3.1
         shell: bash
