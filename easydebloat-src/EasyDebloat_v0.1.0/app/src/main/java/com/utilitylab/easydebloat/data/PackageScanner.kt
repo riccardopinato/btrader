@@ -6,7 +6,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import com.utilitylab.easydebloat.model.DebloatPackage
 import com.utilitylab.easydebloat.model.DeviceProfile
-import com.utilitylab.easydebloat.privilege.ShizukuController
+import com.utilitylab.easydebloat.privilege.PrivilegedCommandExecutor
 import com.utilitylab.easydebloat.util.PackageListParser
 import com.utilitylab.easydebloat.util.PackageStateResolver
 import kotlinx.coroutines.Dispatchers
@@ -16,7 +16,7 @@ import kotlinx.coroutines.withContext
 
 class PackageScanner(
     private val context: Context,
-    private val shizuku: ShizukuController
+    private val shell: PrivilegedCommandExecutor
 ) {
     data class ScanResult(
         val device: DeviceProfile,
@@ -56,13 +56,13 @@ class PackageScanner(
     }
 
     private suspend fun packageSet(command: String): Set<String> {
-        val result = shizuku.exec(command)
+        val result = shell.exec(command)
         if (!result.success) throw IllegalStateException(result.output.ifBlank { "Comando fallito: $command" })
         return PackageListParser.parse(result.output)
     }
 
     private suspend fun readProperties(): Map<String, String> {
-        val result = shizuku.exec("getprop")
+        val result = shell.exec("getprop")
         if (!result.success) return emptyMap()
         val regex = Regex("^\\[([^]]+)]\\s*:\\s*\\[([^]]*)]$")
         return result.output.lineSequence().mapNotNull { line ->

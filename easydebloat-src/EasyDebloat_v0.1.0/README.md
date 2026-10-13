@@ -1,6 +1,6 @@
 # Easy Debloat — UTIL-051
 
-Versione iniziale: **0.1.0**
+Versione pilot Code Hygiene: **0.1.1**
 
 Utility Android nativa Kotlin + Jetpack Compose per gestire app di sistema tramite Shizuku, senza root.
 
@@ -8,6 +8,7 @@ Utility Android nativa Kotlin + Jetpack Compose per gestire app di sistema trami
 
 - rilevamento Shizuku e richiesta autorizzazione;
 - Shizuku `UserService` reale con AIDL;
+- executor strutturato delle operazioni privilegiate, senza catene `&&` ambigue;
 - scansione pacchetti di sistema con `pm list packages`;
 - rilevamento installato / disabilitato / rimosso per user 0;
 - classificazione SAFE / CAUTION / DANGEROUS / UNKNOWN;
@@ -41,9 +42,15 @@ La rimozione usa esclusivamente `--user 0`: non modifica `/system` e non elimina
 - Compose BOM 2026.06.00
 - Shizuku API/provider 13.1.5
 
+## App Factory
+
+Pilot allineato ad App-Factory-Core v26.2 / Golden Index v13.
+`AGENTS.md` definisce il contratto operativo locale.
+
 ## Build
 
-La baseline sorgente è pronta. Il passaggio successivo del progetto sarà la compilazione APK con Android SDK/JDK 17 e generazione completa del Gradle Wrapper 9.3.1.
+Il sorgente è ora materializzato come normali file Git. La compilazione Android
+resta un gate separato e non va confusa con la sola validazione Kotlin pura.
 
 Task previsti:
 

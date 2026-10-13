@@ -4,30 +4,28 @@ import com.utilitylab.easydebloat.model.DebloatAction
 import com.utilitylab.easydebloat.model.DebloatPackage
 import com.utilitylab.easydebloat.model.HistoryEntry
 import com.utilitylab.easydebloat.privilege.ShellCommandResult
-import com.utilitylab.easydebloat.privilege.ShizukuController
-import com.utilitylab.easydebloat.util.PackageNameValidator
 
 class DebloatRepository(
-    private val shizuku: ShizukuController,
+    private val operations: PackageOperationExecutor,
     private val scanner: PackageScanner,
     private val history: ActionHistoryStore
 ) {
     suspend fun scan(): PackageScanner.ScanResult = scanner.scan()
 
     suspend fun disable(pkg: DebloatPackage): ShellCommandResult = operate(pkg, DebloatAction.DISABLE) {
-        shizuku.exec("am force-stop --user 0 ${pkg.packageName} && pm disable-user --user 0 ${pkg.packageName}")
+        operations.execute(pkg.packageName, DebloatAction.DISABLE)
     }
 
     suspend fun enable(pkg: DebloatPackage): ShellCommandResult = operate(pkg, DebloatAction.ENABLE) {
-        shizuku.exec("pm enable --user 0 ${pkg.packageName} && am force-stop --user 0 ${pkg.packageName}")
+        operations.execute(pkg.packageName, DebloatAction.ENABLE)
     }
 
     suspend fun remove(pkg: DebloatPackage): ShellCommandResult = operate(pkg, DebloatAction.REMOVE) {
-        shizuku.exec("am force-stop --user 0 ${pkg.packageName} && pm uninstall --user 0 ${pkg.packageName}")
+        operations.execute(pkg.packageName, DebloatAction.REMOVE)
     }
 
     suspend fun restore(pkg: DebloatPackage): ShellCommandResult = operate(pkg, DebloatAction.RESTORE) {
-        shizuku.exec("cmd package install-existing --user 0 ${pkg.packageName} && pm enable --user 0 ${pkg.packageName}")
+        operations.execute(pkg.packageName, DebloatAction.RESTORE)
     }
 
     private suspend fun operate(
@@ -35,9 +33,6 @@ class DebloatRepository(
         action: DebloatAction,
         block: suspend () -> ShellCommandResult
     ): ShellCommandResult {
-        if (!PackageNameValidator.isValid(pkg.packageName)) {
-            return ShellCommandResult(-1, "Nome package non valido")
-        }
         if (pkg.isProtected || DebloatCatalog.isHardBlocked(pkg.packageName)) {
             return ShellCommandResult(-1, "Componente protetto da Easy Debloat")
         }

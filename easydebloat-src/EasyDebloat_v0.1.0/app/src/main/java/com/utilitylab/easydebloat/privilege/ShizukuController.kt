@@ -13,7 +13,7 @@ import kotlinx.coroutines.withContext
 import rikka.shizuku.Shizuku
 import com.utilitylab.easydebloat.BuildConfig
 
-class ShizukuController(private val context: Context) {
+class ShizukuController(private val context: Context) : PrivilegedCommandExecutor {
     enum class Status { NOT_INSTALLED, NOT_RUNNING, PERMISSION_REQUIRED, CONNECTING, READY, ERROR }
 
     data class State(
@@ -30,6 +30,9 @@ class ShizukuController(private val context: Context) {
     @Volatile
     private var service: IEasyDebloatService? = null
 
+    @Volatile
+    private var binding: Boolean = false
+
     private val userServiceArgs by lazy {
         Shizuku.UserServiceArgs(ComponentName(context, EasyDebloatUserService::class.java))
             .daemon(false)
@@ -41,6 +44,12 @@ class ShizukuController(private val context: Context) {
 
     private val serviceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
+            binding = false
+            if (binder == null) {
+                service = null
+                _state.value = currentServerState(Status.ERROR, "Binder UserService non disponibile")
+                return
+            }
             val remote = IEasyDebloatService.Stub.asInterface(binder)
             service = remote
             val uid = runCatching { remote.uid() }.getOrNull()
@@ -48,6 +57,7 @@ class ShizukuController(private val context: Context) {
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {
+            binding = false
             service = null
             _state.value = _state.value.copy(status = Status.CONNECTING, message = "Servizio privilegiato disconnesso")
         }
@@ -55,6 +65,7 @@ class ShizukuController(private val context: Context) {
 
     private val binderReceivedListener = Shizuku.OnBinderReceivedListener { refreshAndBind() }
     private val binderDeadListener = Shizuku.OnBinderDeadListener {
+        binding = false
         service = null
         _state.value = State(status = if (isManagerInstalled()) Status.NOT_RUNNING else Status.NOT_INSTALLED)
     }
@@ -66,10 +77,13 @@ class ShizukuController(private val context: Context) {
     }
 
     fun start() {
-        Shizuku.addBinderReceivedListenerSticky(binderReceivedListener)
         Shizuku.addBinderDeadListener(binderDeadListener)
         Shizuku.addRequestPermissionResultListener(permissionListener)
-        refreshAndBind()
+        Shizuku.addBinderReceivedListenerSticky(binderReceivedListener)
+
+        // Sticky invokes immediately when the binder is already available.
+        // Probe explicitly only when it is not, avoiding a duplicate bind path.
+        if (!Shizuku.pingBinder()) refreshAndBind()
     }
 
     fun requestPermission() {
@@ -81,9 +95,12 @@ class ShizukuController(private val context: Context) {
             .onFailure { _state.value = currentServerState(Status.ERROR, it.message) }
     }
 
-    fun retry() = refreshAndBind()
+    fun retry() {
+        binding = false
+        refreshAndBind()
+    }
 
-    suspend fun exec(command: String): ShellCommandResult = withContext(Dispatchers.IO) {
+    override suspend fun exec(command: String): ShellCommandResult = withContext(Dispatchers.IO) {
         val remote = service ?: return@withContext ShellCommandResult(-1, "Shizuku UserService non connesso")
         runCatching { ShellCommandResult.decode(remote.exec(command)) }
             .getOrElse { ShellCommandResult(-1, "${it.javaClass.simpleName}: ${it.message.orEmpty()}") }
@@ -112,9 +129,15 @@ class ShizukuController(private val context: Context) {
             _state.value = currentServerState(Status.READY).copy(serviceUid = runCatching { service?.uid() }.getOrNull())
             return
         }
+        if (binding) return
+
+        binding = true
         _state.value = currentServerState(Status.CONNECTING)
         runCatching { Shizuku.bindUserService(userServiceArgs, serviceConnection) }
-            .onFailure { _state.value = currentServerState(Status.ERROR, it.message) }
+            .onFailure {
+                binding = false
+                _state.value = currentServerState(Status.ERROR, it.message)
+            }
     }
 
     private fun currentServerState(status: Status, message: String? = null): State {

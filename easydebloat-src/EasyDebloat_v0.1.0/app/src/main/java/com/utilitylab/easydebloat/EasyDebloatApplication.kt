@@ -3,6 +3,7 @@ package com.utilitylab.easydebloat
 import android.app.Application
 import com.utilitylab.easydebloat.data.ActionHistoryStore
 import com.utilitylab.easydebloat.data.DebloatRepository
+import com.utilitylab.easydebloat.data.PackageOperationExecutor
 import com.utilitylab.easydebloat.data.PackageScanner
 import com.utilitylab.easydebloat.data.SettingsStore
 import com.utilitylab.easydebloat.privilege.ShizukuController
@@ -21,7 +22,8 @@ class EasyDebloatApplication : Application() {
 class AppContainer(app: Application) {
     val shizukuController = ShizukuController(app)
     val scanner = PackageScanner(app, shizukuController)
+    val packageOperations = PackageOperationExecutor(shizukuController)
     val historyStore = ActionHistoryStore(app)
     val settingsStore = SettingsStore(app)
-    val repository = DebloatRepository(shizukuController, scanner, historyStore)
+    val repository = DebloatRepository(packageOperations, scanner, historyStore)
 }

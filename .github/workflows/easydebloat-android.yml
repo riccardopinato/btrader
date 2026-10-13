@@ -1,0 +1,52 @@
+name: Easy Debloat Android CI
+
+on:
+  pull_request:
+    branches: [easydebloat-build]
+    paths:
+      - 'easydebloat-src/**'
+      - '.github/workflows/easydebloat-android.yml'
+  push:
+    branches: [easydebloat-code-hygiene-pilot]
+    paths:
+      - 'easydebloat-src/**'
+      - '.github/workflows/easydebloat-android.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install JDK 17 and Android SDK packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y openjdk-17-jdk-headless
+          export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+          echo "JAVA_HOME=$JAVA_HOME" >> "$GITHUB_ENV"
+          echo "$JAVA_HOME/bin" >> "$GITHUB_PATH"
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platforms;android-37" "build-tools;36.0.0"
+
+      - name: Install Gradle 9.3.1
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL https://services.gradle.org/distributions/gradle-9.3.1-bin.zip -o /tmp/gradle.zip
+          unzip -q /tmp/gradle.zip -d /tmp
+          echo "/tmp/gradle-9.3.1/bin" >> "$GITHUB_PATH"
+
+      - name: Unit tests and Android builds
+        working-directory: easydebloat-src/EasyDebloat_v0.1.0
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle testDebugUnitTest assembleDebug assembleRelease --stacktrace
