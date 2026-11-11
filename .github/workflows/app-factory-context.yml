@@ -4,11 +4,6 @@ on:
   schedule:
     - cron: '39 6 * * *'
   workflow_dispatch:
-  # QA TEMPORARY — bounded push canary. Revert immediately after E2E evidence.
-  push:
-    branches: [master]
-    paths:
-      - '.github/workflows/app-factory-context.yml'
   pull_request:
     paths:
       - '.github/workflows/app-factory-context.yml'
